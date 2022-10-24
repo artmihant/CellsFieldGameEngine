@@ -1,0 +1,248 @@
+<html>
+	<head>
+	<script type="application/javascript">
+
+//Прототип нашей системы позволяет мастеру игры свободно настраивать игровую доску в угоду игры. Система состоит из двух клиентских частей - редактор и интерфейс игрока, а так же серверного хранилища.
+//Мастер должен уметь менять: размеры поля, раскраску любой клетки поля и пиктограммы. Пиктограммы берутся из библиотеки пиктограмм. Раскраска - из библитеки раскрасок. 
+
+	function gameboard(canvasid) {
+		/*
+			- инициализатор холста
+			- вызвать холст должного размера
+			- нарисовать в нем основу для поля(сетка, границы), палитры(границы), трех библиотек. 
+			- обратиться в базу аякс и заполнить поле текстурами-объектами-границами, палитры и библиотеки ими же.
+			- задать передачу кликов, отпусков и мувов по холсту холсте на обработчик мышекликов.
+		*/
+		var colorgrid = "rgba(150, 150, 150, 0.5)";
+		var metric = 50;
+
+		var space = document.getElementById(canvasid)
+
+		var library = {width: space.width, height: 2*metric, left:0, top: space.height}
+			library.top = library.top - library.height;
+
+		var palette = {width: 2*metric, height: space.height-library.height, left:space.width, top: 0}
+			palette.left = palette.left - palette.width;
+
+		var field = {width: space.width-palette.width, height: space.height-library.height, left:0, top:0}
+
+		var canvas = space.getContext('2d');
+
+		var images = [];
+
+		//отдаем объекты поля - на выходе массив field.content
+		//то есть мы как-то его получили. Переписать эту строку в json-запрос
+		field.content = [
+			[['#ffffff','gnome1'],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0]],
+			[['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0]],
+			[['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0]],
+			[['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0]],
+			[['#ffffff',0],['#000000',0],['#ffffff','zombi1'],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0]],
+			[['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0]],
+			[['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0]],
+			[['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0],['#000000',0],['#ffffff',0]],
+		];
+
+		//аналогично поступаем с библиотекой и палитрой.
+		library.content = {
+			elf1 : ['elfs.png',0,0],
+			elf2 : ['elfs.png',1,0],
+			gnome1 : ['elfs.png',0,1],
+			gnome2 : ['elfs.png',1,1],
+			orc1 : ['orcs.png',0,0],
+			orc2 : ['orcs.png',1,0],
+			zombi1 : ['orcs.png',0,1],
+			zombi2 : ['orcs.png',1,1],
+		};
+
+		palette.content = {
+			objects: ['elf1','elf2','orc1','orc2'],
+			texture: ['#0f0','#0f5','#0f3']
+		};
+
+
+
+		for(var i=0; i<field.content.length; i++) {
+			for(var j=0; j<field.content[i].length; j++) {
+				painttexture(i,j,field.content[i][j][0])
+			}
+		}
+
+		for(var i=0; i<field.content.length; i++) {
+			for(var j=0; j<field.content[i].length; j++) {
+				var name = field.content[i][j][1];
+				if(name){
+					var imagename = library.content[name][0];
+					if(!images[imagename]){
+						images[imagename] = new Image();
+						images[imagename].src = imagename;
+						images[imagename].onload = loadobjects.call(imagename)
+					}
+				}
+			}
+		}
+
+
+
+		function loadobjects(){
+			for(var i=0; i<field.content.length; i++) {
+				for(var j=0; j<field.content[i].length; j++) {
+					if(field.content[i][j][1]){
+						var object = library.content[field.content[i][j][1]];
+						if(this == object[0]){
+							paintobjects(i,j,field.content[i][j][1]);
+						}
+					}
+				}
+			}
+		}
+
+
+
+
+		covergrid(library,metric,colorgrid);
+		covergrid(palette,metric,colorgrid);
+		covergrid(field,metric,colorgrid);
+
+
+		space.onmousedown = mouseDown;
+
+		space.onmousemove = mouseMove;
+
+		space.onmouseup = mouseUp;
+
+		var dragObject = {}
+
+		function mouseDown(event) {
+			// запомнить переносимый объект 
+			// в переменной dragObject
+
+			event = fixEvent(event)
+
+			dragObject.pageX  = event.pageX
+
+			dragObject.pageY  = event.pageY
+
+			// остановить обработку события
+			return false
+		}
+
+		function mouseMove(e){
+			if (dragObject.pageX) {
+				//
+
+				//отобразить перенос объекта
+			}
+		}
+
+		function getplace(number){
+			return ((number-(number%metric))/metric)-2
+		}
+
+		function mouseUp(event) {
+			// опустить переносимый объект
+
+			if(dragObject.pageX){
+				event = fixEvent(event)
+
+				//alert(getplace(dragObject.pageX)+' '+getplace(dragObject.pageY)+' '+getplace(event.pageX)+' '+getplace(event.pageY)+' '+'field');
+
+				move(getplace(dragObject.pageX),getplace(dragObject.pageY),getplace(event.pageX),getplace(event.pageY),'field');
+
+
+				document.getElementById('mouse').value = event.pageX+' '+event.pageY+' '+dragObject.pageX+' '+dragObject.pageY
+				dragObject.pageX = null;
+			}
+		}
+
+
+		function fixEvent(e) {
+			// получить объект событие для IE
+			e = e || window.event
+
+			// добавить pageX/pageY для IE
+			if ( e.pageX == null && e.clientX != null ) {
+				var html = document.documentElement
+				var body = document.body
+				e.pageX = e.clientX + (html && html.scrollLeft || body && body.scrollLeft || 0) - (html.clientLeft || 0)
+				e.pageY = e.clientY + (html && html.scrollTop || body && body.scrollTop || 0) - (html.clientTop || 0)
+			}
+
+			// добавить which для IE
+			if (!e.which && e.button) {
+				e.which = e.button & 1 ? 1 : ( e.button & 2 ? 3 : ( e.button & 4 ? 2 : 0 ) )
+			}
+
+			return e
+		}
+
+
+		//
+		function move(y0,x0,y1,x1,type){
+			if(type=='field'){
+				var name = field.content[x0][y0][1];
+				field.content[x0][y0][1] = 0;
+				painttexture(x0,y0,field.content[x0][y0][0])
+				field.content[x1][y1][1] = name;
+				painttexture(x1,y1,field.content[x1][y1][0])
+				paintobjects(x1,y1,name)
+			}
+		}
+
+		function paintobjects(i,j,name){
+			var object = library.content[name];
+			canvas.drawImage(images[object[0]], metric*object[1], metric*object[2], metric, metric,  metric*j, metric*i, metric, metric);
+		}
+
+		function painttexture(i,j,color){
+			canvas.beginPath();
+			canvas.fillStyle = color;
+			canvas.fillRect(metric*j, metric*i, metric, metric);
+			canvas.closePath();
+		}
+
+		//Рисуте поле(массив поля/размер клеточки/цвет границы)
+		function covergrid(block,metric,bordercolor){
+			var i;
+
+			canvas.beginPath();
+				canvas.moveTo(block.left+0.5, block.top+0.5);
+				canvas.lineTo(block.left+0.5, block.top+block.height-0.5);
+				canvas.lineTo(block.left+block.width-0.5, block.top+block.height-0.5);
+				canvas.lineTo(block.left+block.width-0.5, block.top+0.5);
+				canvas.lineTo(block.left+0.5, block.top+0.5);
+				canvas.strokeStyle = bordercolor;
+				canvas.stroke();
+			canvas.closePath();
+
+			canvas.beginPath();
+				for (i = metric+0.5; i < block.width; i += metric) {
+					canvas.moveTo(block.left+i, block.top);
+					canvas.lineTo(block.left+i, block.top+block.height);
+				}
+				for (i = metric+0.5; i < block.height; i += metric) {
+					canvas.moveTo(block.left,block.top+i);
+					canvas.lineTo(block.left+block.width,block.top+i);
+				}
+				canvas.strokeStyle = bordercolor;
+				canvas.stroke();
+			canvas.closePath();
+		}
+	}
+
+
+
+
+	</script>
+	</head>
+	<body>
+		<canvas id="gameboard" width="450px" height="450px" style="margin:100px;"></canvas>
+		<script>
+			var gameboard = gameboard("gameboard");
+		</script>
+		<input id="mouse">
+	</body>
+</html>
+
+
+

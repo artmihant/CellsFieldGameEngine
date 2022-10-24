@@ -1,0 +1,67 @@
+size := <15 15>
+
+field := <#white [<1 1>..size]>
+head := <#green []>
+apple := <#red []>
+tail := <#af0056[]>
+
+space <=| apple
+space <=| head
+space <=| tail
+
+score <=> |tail|
+
+center := size/2 + <1 1>
+
+message.start := <"Начать игру" [center]>
+message.restart := <"Сыграть ещё" [center]>
+message.final := <"Вы набрали {score} очков" [center] + <0 1>>
+message.score := <"{score}" [<-1 -1>]>
+
+space <=| message.start
+
+time.timeout := 100
+
+up    := < -1 0>
+down  := <1 0>
+left  := <0 -1>
+right := <0 1>
+
+putapple <=> apple <== [random (space \ head \ tail)]
+
+start <=> {
+    main.field <=\ message.start
+    main.field <=\ message.restart
+    main.field <=| message.score
+    head <== [center]
+    tail <== []
+
+    course <= up
+    putapple
+
+    wait main.timeout >> turn
+}
+
+turn <=> {
+    head <= +course
+    head <= % main.size
+    tail <== head | tail
+
+    head & apple ?
+        putapple :
+        tail <=\ tail[-1]
+
+    head & tail ? gameover : wait main.timeout >> turn
+}
+
+click message.start >> start
+click message.restart >> start
+
+gameover <=> main.field <=| message.restart
+
+keydown >>
+    main.key = 'up'    & course != down  ? course <= up   :
+    main.key = 'down'  & course != up    ? course <= down :
+    main.key = 'left'  & course != right ? course <= left :
+    main.key = 'right' & course != left  ? course <= right
+

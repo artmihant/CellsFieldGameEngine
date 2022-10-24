@@ -1,0 +1,38 @@
+space <= <#000000 [100x100]>
+alive <= <#00ff00 [empty >> cell => (random [0 1] = 1) ? cell]>
+
+main.field <= [space alive]
+
+neighborsDirection <= [
+    <-1  1> <0  1> <1  1>
+    <-1  0>        <1  0>
+    <-1 -1> <0 -1> <1 -1>
+]
+
+wait main.timeout
+
+turn <=> {
+    new_alive <= []
+
+    space >> point => {
+        aliveNeighbors <= 0
+
+        neighborsDirection >> direction =>
+            (point + direction in alive) ?
+                aliveNeighbors <= +1
+
+        (aliveNeighbors = 3) |
+        (aliveNeighbors = 2 & point in alive) ?
+            new_alive <=| point
+    }
+
+    alive <== new_alive
+
+    wait main.timeout >> turn
+}
+
+click space >> main.cursor in alive ?
+        alive <=\ main.cursor :
+        alive <=| main.cursor
+
+

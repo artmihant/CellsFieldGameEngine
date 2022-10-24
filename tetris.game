@@ -1,0 +1,49 @@
+tetramino <= <#black []>
+bottom <= <#gray []>
+
+main.size <= <10 20>
+
+main.field <= [
+    tetramino
+    bottom
+]
+
+score <= 0
+
+message.start <= <"Начать игру" [(size field)/2]>
+message.restart <= <"Сыграть ещё" [(size field)/2]>
+message.final <= <"Вы набрали {score} очков" [(size field)/2] + <0 1>>
+message.score <= <"{score}" [<-1 -1>]>
+
+tetraminos = [
+    [ <0 0> <1 0> <2 0> <3 0> ]
+    [ <0 0> <1 0> <2 0>
+                  <2 1> ]
+    [ <0 0> <1 0> <2 0>
+      <0 1>             ]
+    [ <0 0> <1 0>
+      <0 1> <1 1> ]
+    [ <0 0> <1 0>
+            <1 1> <2 1> ]
+    [       <1 0> <2 0>
+      <0 1> <1 1>       ]
+    [ <0 0> <1 0> <2 0>
+            <1 1>       ]
+]
+
+rotate <= figure => figure *= <0 -1 | 1 0>
+
+start <=> {
+}
+
+turn <=> {
+}
+
+click message.start >> start
+click message.restart >> start
+
+keydown >>
+    main.key = 'down' ?  :
+    main.key = 'space' ? retate tetramino :
+    main.key = 'right' ? :
+    main.key = 'left' ? :
